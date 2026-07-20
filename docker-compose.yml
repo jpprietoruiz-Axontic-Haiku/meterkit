@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: meterkit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: meterkit
+      POSTGRES_PASSWORD: meterkit
+      POSTGRES_DB: meterkit
+    ports:
+      - "5432:5432"
+    volumes:
+      - meterkit_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meterkit -d meterkit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  meterkit_postgres_data:
