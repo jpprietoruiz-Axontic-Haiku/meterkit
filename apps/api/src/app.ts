@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { ZodError } from "zod";
 import { authRoutes } from "./routes/auth";
+import { usageRoutes } from "./routes/usage";
 import type { AppEnv } from "./types";
 
 export function createApp() {
@@ -24,6 +25,7 @@ export function createApp() {
   app.get("/health", (c) => c.json({ status: "ok" }));
 
   app.route("/auth", authRoutes);
+  app.route("/v1/usage", usageRoutes);
 
   return app;
 }
