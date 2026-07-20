@@ -48,7 +48,7 @@ jobs:
         run: bun run typecheck
 
       - name: Apply migrations
-        run: bun --cwd apps/api run db:migrate
+        run: bun --cwd=apps/api run db:migrate
 
       - name: Test
         run: bun run test
