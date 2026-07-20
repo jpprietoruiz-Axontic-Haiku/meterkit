@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
-import Stripe from "stripe";
 import { createApp } from "../src/app";
 import { db } from "../src/db";
 import { tenants } from "../src/db/schema";
 import { env } from "../src/env";
-import { getStripeClient } from "../src/lib/stripe";
 import { resetDatabase } from "./helpers/db";
 
 type AuthResponse = { tenant: { id: string; name: string } };
@@ -29,6 +27,19 @@ async function createTenantWithStripeCustomer(customerId: string) {
   return tenant.id;
 }
 
+// El SDK de Stripe no ofrece un `generateTestHeaderString` async, y en Bun
+// (crypto provider SubtleCrypto, siempre async) la variante sincrona no
+// funciona ni forzando el provider de Node (Stripe la bloquea a proposito
+// fuera de Node). Se firma a mano con el mismo esquema que usa Stripe:
+// v1 = HMAC-SHA256(secret, "{timestamp}.{payload}") en hex.
+function signStripePayload(payload: string, secret: string): string {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = new Bun.CryptoHasher("sha256", secret)
+    .update(`${timestamp}.${payload}`)
+    .digest("hex");
+  return `t=${timestamp},v1=${signature}`;
+}
+
 function signedWebhookRequest(eventId: string, type: string, dataObject: Record<string, unknown>) {
   const payload = JSON.stringify({
     id: eventId,
@@ -36,15 +47,8 @@ function signedWebhookRequest(eventId: string, type: string, dataObject: Record<
     type,
     data: { object: dataObject },
   });
-  const header = getStripeClient().webhooks.generateTestHeaderString({
-    payload,
-    // biome-ignore lint/style/noNonNullAssertion: seteado explicitamente para estos tests
-    secret: env.STRIPE_WEBHOOK_SECRET!,
-    // generateTestHeaderString es sincrono y el provider por defecto en Bun
-    // (SubtleCrypto) no soporta sincronia; forzamos el provider de Node solo
-    // para este helper de test.
-    cryptoProvider: Stripe.createNodeCryptoProvider(),
-  });
+  // biome-ignore lint/style/noNonNullAssertion: seteado explicitamente para estos tests
+  const header = signStripePayload(payload, env.STRIPE_WEBHOOK_SECRET!);
 
   return app.request("/webhooks/stripe", {
     method: "POST",
