@@ -9,6 +9,7 @@ export default defineConfig({
       "/v1": "http://localhost:3000",
       "/auth": "http://localhost:3000",
       "/billing": "http://localhost:3000",
+      "/quotas": "http://localhost:3000",
     },
   },
 });

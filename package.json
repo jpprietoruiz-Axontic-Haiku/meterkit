@@ -13,7 +13,8 @@
     "lint:fix": "biome check --write .",
     "db:generate": "bun --cwd apps/api run db:generate",
     "db:migrate": "bun --cwd apps/api run db:migrate",
-    "db:studio": "bun --cwd apps/api run db:studio"
+    "db:studio": "bun --cwd apps/api run db:studio",
+    "db:seed": "bun --cwd apps/api run db:seed"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4"
