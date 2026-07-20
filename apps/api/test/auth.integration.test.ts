@@ -28,15 +28,15 @@ async function register(tenantName: string, email: string, password = "correctho
   return { res, body: (await res.json()) as AuthResponse };
 }
 
-// No afterAll(closeDb) aqui: el cliente de Postgres (src/db) es un singleton
-// compartido por todo el proceso de `bun test`, que corre todos los archivos
-// de test en el mismo proceso. Cerrarlo al final de un archivo rompe la
-// conexion para los siguientes. El proceso de test termina y libera el
-// socket solo; no hace falta cerrarlo a mano.
+// No afterAll(closeDb) here: the Postgres client (src/db) is a singleton
+// shared by the entire `bun test` process, which runs all test files in
+// the same process. Closing it at the end of one file breaks the
+// connection for the following ones. The test process ends and releases
+// the socket on its own; there's no need to close it manually.
 beforeEach(resetDatabase);
 
 describe("POST /auth/register", () => {
-  it("crea un tenant nuevo con su usuario owner y devuelve un JWT", async () => {
+  it("creates a new tenant with its owner user and returns a JWT", async () => {
     const { res, body } = await register("Acme Inc", "owner@acme.test");
 
     expect(res.status).toBe(201);
@@ -45,18 +45,18 @@ describe("POST /auth/register", () => {
     expect(body.tenant.name).toBe("Acme Inc");
   });
 
-  it("rechaza un email duplicado con 409", async () => {
+  it("rejects a duplicate email with 409", async () => {
     await register("Acme Inc", "owner@acme.test");
     const { res } = await register("Otra empresa", "owner@acme.test");
 
     expect(res.status).toBe(409);
   });
 
-  it("rechaza payloads invalidos con 400", async () => {
+  it("rejects invalid payloads with 400", async () => {
     const res = await app.request("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tenantName: "", email: "no-es-un-email", password: "123" }),
+      body: JSON.stringify({ tenantName: "", email: "not-an-email", password: "123" }),
     });
 
     expect(res.status).toBe(400);
@@ -64,7 +64,7 @@ describe("POST /auth/register", () => {
 });
 
 describe("POST /auth/login", () => {
-  it("devuelve un JWT valido con credenciales correctas", async () => {
+  it("returns a valid JWT with correct credentials", async () => {
     await register("Acme Inc", "owner@acme.test", "correcthorsebattery");
 
     const res = await app.request("/auth/login", {
@@ -78,18 +78,18 @@ describe("POST /auth/login", () => {
     expect(body.token).toBeTypeOf("string");
   });
 
-  it("rechaza contrasena incorrecta con 401 sin filtrar si el email existe", async () => {
+  it("rejects an incorrect password with 401 without leaking whether the email exists", async () => {
     await register("Acme Inc", "owner@acme.test", "correcthorsebattery");
 
     const wrongPassword = await app.request("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "owner@acme.test", password: "incorrecta" }),
+      body: JSON.stringify({ email: "owner@acme.test", password: "wrong-password" }),
     });
     const unknownEmail = await app.request("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "no-existe@acme.test", password: "cualquiera" }),
+      body: JSON.stringify({ email: "does-not-exist@acme.test", password: "whatever" }),
     });
 
     expect(wrongPassword.status).toBe(401);
@@ -97,19 +97,19 @@ describe("POST /auth/login", () => {
   });
 });
 
-describe("Aislamiento multi-tenant", () => {
-  it("un tenant no puede ver ni modificar datos de otro tenant via /auth/me y /auth/api-key", async () => {
+describe("Multi-tenant isolation", () => {
+  it("a tenant cannot view or modify another tenant's data via /auth/me and /auth/api-key", async () => {
     const tenantA = await register("Tenant A", "owner-a@test.com");
     const tenantB = await register("Tenant B", "owner-b@test.com");
 
-    // El owner de A rota su API key.
+    // A's owner rotates their API key.
     const rotate = await app.request("/auth/api-key", {
       method: "POST",
       headers: { Authorization: `Bearer ${tenantA.body.token}` },
     });
     expect(rotate.status).toBe(200);
 
-    // /auth/me de cada tenant solo debe reflejar sus propios datos.
+    // /auth/me for each tenant must only reflect its own data.
     const meA = await app.request("/auth/me", {
       headers: { Authorization: `Bearer ${tenantA.body.token}` },
     });
@@ -122,16 +122,16 @@ describe("Aislamiento multi-tenant", () => {
     expect(meABody.tenant.id).toBe(tenantA.body.tenant.id);
     expect(meABody.tenant.apiKeyPrefix).toBeTruthy();
     expect(meBBody.tenant.id).toBe(tenantB.body.tenant.id);
-    // La rotacion de API key de A no debe haber tocado a B.
+    // A's API key rotation must not have affected B.
     expect(meBBody.tenant.apiKeyPrefix).toBeFalsy();
 
-    // Verificacion directa en base de datos: el hash de B sigue siendo null.
+    // Direct database check: B's hash is still null.
     const tenantBRow = await db.query.tenants.findFirst({
       where: eq(tenants.id, tenantB.body.tenant.id),
     });
     expect(tenantBRow?.apiKeyHash).toBeNull();
 
-    // Los usuarios de cada tenant solo existen bajo su propio tenant_id.
+    // Each tenant's users only exist under their own tenant_id.
     const usersOfA = await db.query.users.findMany({
       where: eq(users.tenantId, tenantA.body.tenant.id),
     });
@@ -147,11 +147,11 @@ describe("Aislamiento multi-tenant", () => {
 });
 
 describe("RBAC", () => {
-  it("un member no puede rotar la API key del tenant (403)", async () => {
+  it("a member cannot rotate the tenant's API key (403)", async () => {
     const tenantA = await register("Tenant A", "owner-a@test.com");
 
-    // No hay endpoint de invitacion en este hito; se inserta un member directamente
-    // para probar el enforcement de rol sobre un endpoint owner/admin.
+    // There's no invitation endpoint at this milestone; a member is inserted directly
+    // to test role enforcement on an owner/admin endpoint.
     const [member] = await db
       .insert(users)
       .values({
@@ -161,7 +161,7 @@ describe("RBAC", () => {
         role: "member",
       })
       .returning();
-    if (!member) throw new Error("setup fallido");
+    if (!member) throw new Error("setup failed");
 
     const memberToken = await signAuthToken({
       sub: member.id,
@@ -178,7 +178,7 @@ describe("RBAC", () => {
     expect(res.status).toBe(403);
   });
 
-  it("rechaza peticiones sin token con 401", async () => {
+  it("rejects requests without a token with 401", async () => {
     const res = await app.request("/auth/me");
     expect(res.status).toBe(401);
   });

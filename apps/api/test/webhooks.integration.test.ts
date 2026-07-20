@@ -27,11 +27,11 @@ async function createTenantWithStripeCustomer(customerId: string) {
   return tenant.id;
 }
 
-// El SDK de Stripe no ofrece un `generateTestHeaderString` async, y en Bun
-// (crypto provider SubtleCrypto, siempre async) la variante sincrona no
-// funciona ni forzando el provider de Node (Stripe la bloquea a proposito
-// fuera de Node). Se firma a mano con el mismo esquema que usa Stripe:
-// v1 = HMAC-SHA256(secret, "{timestamp}.{payload}") en hex.
+// The Stripe SDK doesn't offer an async `generateTestHeaderString`, and on Bun
+// (crypto provider SubtleCrypto, always async) the synchronous variant doesn't
+// work even when forcing the Node provider (Stripe deliberately blocks it
+// outside of Node). We sign it by hand using the same scheme Stripe uses:
+// v1 = HMAC-SHA256(secret, "{timestamp}.{payload}") in hex.
 function signStripePayload(payload: string, secret: string): string {
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = new Bun.CryptoHasher("sha256", secret)
@@ -47,7 +47,7 @@ function signedWebhookRequest(eventId: string, type: string, dataObject: Record<
     type,
     data: { object: dataObject },
   });
-  // biome-ignore lint/style/noNonNullAssertion: seteado explicitamente para estos tests
+  // biome-ignore lint/style/noNonNullAssertion: explicitly set for these tests
   const header = signStripePayload(payload, env.STRIPE_WEBHOOK_SECRET!);
 
   return app.request("/webhooks/stripe", {
@@ -57,15 +57,15 @@ function signedWebhookRequest(eventId: string, type: string, dataObject: Record<
   });
 }
 
-// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
-// por todos los archivos de test dentro del mismo proceso de `bun test`.
+// No afterAll(closeDb): the Postgres client is a singleton shared by all
+// test files within the same `bun test` process.
 beforeEach(resetDatabase);
 
 describe("POST /webhooks/stripe", () => {
-  it("rechaza una firma invalida con 400", async () => {
+  it("rejects an invalid signature with 400", async () => {
     const res = await app.request("/webhooks/stripe", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "stripe-signature": "t=1,v1=invalido" },
+      headers: { "Content-Type": "application/json", "stripe-signature": "t=1,v1=invalid" },
       body: JSON.stringify({
         id: "evt_x",
         type: "checkout.session.completed",
@@ -75,7 +75,7 @@ describe("POST /webhooks/stripe", () => {
     expect(res.status).toBe(400);
   });
 
-  it("checkout.session.completed activa la suscripcion del tenant", async () => {
+  it("checkout.session.completed activates the tenant's subscription", async () => {
     const tenantId = await createTenantWithStripeCustomer("cus_test_1");
 
     const res = await signedWebhookRequest("evt_checkout_1", "checkout.session.completed", {
@@ -89,7 +89,7 @@ describe("POST /webhooks/stripe", () => {
     expect(tenant?.stripeSubscriptionId).toBe("sub_test_1");
   });
 
-  it("customer.subscription.deleted marca la suscripcion como cancelada", async () => {
+  it("customer.subscription.deleted marks the subscription as canceled", async () => {
     const tenantId = await createTenantWithStripeCustomer("cus_test_2");
     await signedWebhookRequest("evt_sub_created_2", "checkout.session.completed", {
       customer: "cus_test_2",
@@ -106,7 +106,7 @@ describe("POST /webhooks/stripe", () => {
     expect(tenant?.subscriptionStatus).toBe("canceled");
   });
 
-  it("es idempotente: reenviar el mismo stripe_event_id no reprocesa el efecto", async () => {
+  it("is idempotent: resending the same stripe_event_id does not reprocess the effect", async () => {
     const tenantId = await createTenantWithStripeCustomer("cus_test_3");
 
     const first = await signedWebhookRequest("evt_dup_1", "checkout.session.completed", {
@@ -115,11 +115,11 @@ describe("POST /webhooks/stripe", () => {
     });
     expect(await first.json()).toMatchObject({ received: true });
 
-    // Reintento de Stripe con el mismo event id, pero con un payload distinto:
-    // si se reprocesara, sobreescribiria stripeSubscriptionId.
+    // Stripe retry with the same event id, but with a different payload:
+    // if it were reprocessed, it would overwrite stripeSubscriptionId.
     const second = await signedWebhookRequest("evt_dup_1", "checkout.session.completed", {
       customer: "cus_test_3",
-      subscription: "sub_deberia_ser_ignorado",
+      subscription: "sub_should_be_ignored",
     });
     const secondBody = (await second.json()) as { received: boolean; duplicate?: boolean };
 

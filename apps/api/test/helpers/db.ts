@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "../../src/db";
 
-/** Vacia todas las tablas de dominio entre tests, preservando el esquema. */
+/** Empties all domain tables between tests, preserving the schema. */
 export async function resetDatabase(): Promise<void> {
   await db.execute(sql`
     TRUNCATE TABLE

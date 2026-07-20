@@ -2,9 +2,9 @@ const KEY_PREFIX = "mk_live_";
 const SECRET_BYTES = 24;
 
 export type GeneratedApiKey = {
-  /** Se muestra al usuario una unica vez; solo se persiste su hash. */
+  /** Shown to the user only once; only its hash is persisted. */
   plaintext: string;
-  /** Primeros caracteres, seguros de guardar en claro para mostrar en la UI (p. ej. "mk_live_a1b2c3d4"). */
+  /** First few characters, safe to store in plaintext for display in the UI (e.g. "mk_live_a1b2c3d4"). */
   prefix: string;
   hash: string;
 };

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { createApp } from "../src/app";
 
 describe("GET /health", () => {
-  it("responde 200 con status ok", async () => {
+  it("responds 200 with status ok", async () => {
     const app = createApp();
     const res = await app.request("/health");
 

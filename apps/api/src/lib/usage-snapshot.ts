@@ -17,10 +17,10 @@ export type UsageSnapshot = {
 };
 
 /**
- * Foto del consumo del mes en curso para el dashboard en vivo: totales +
- * coste estimado por metric, y el % de cada cuota consumido. Reutilizada
- * tanto por el SSE (hito 6) como, potencialmente, por cualquier vista que
- * necesite "donde estoy ahora mismo" sin pedir historico.
+ * Snapshot of the current month's consumption for the live dashboard: totals +
+ * estimated cost per metric, and the % of each quota consumed. Reused both by
+ * the SSE endpoint (milestone 6) and, potentially, by any view that needs
+ * "where am I right now" without requesting history.
  */
 export async function buildUsageSnapshot(tenantId: string): Promise<UsageSnapshot> {
   const monthStart = startOfUtcMonth(new Date());

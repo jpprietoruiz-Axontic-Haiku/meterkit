@@ -9,10 +9,10 @@ async function main() {
   const db = drizzle(migrationClient);
   await migrate(db, { migrationsFolder: "./drizzle" });
   await migrationClient.end();
-  console.log("Migraciones aplicadas correctamente.");
+  console.log("Migrations applied successfully.");
 }
 
 main().catch((error) => {
-  console.error("Fallo al aplicar migraciones:", error);
+  console.error("Failed to apply migrations:", error);
   process.exit(1);
 });

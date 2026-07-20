@@ -42,8 +42,8 @@ const SEED_TENANTS: SeedTenant[] = [
   {
     name: "Globex Corp",
     email: "owner@globex.demo",
-    // Cuota hard deliberadamente ajustada: en pocos dias el seed la deja cerca
-    // o por encima del limite, para que el dashboard muestre el bloqueo real.
+    // Deliberately tight hard quota: within a few days the seed leaves it close
+    // to or above the limit, so the dashboard shows an actual block.
     quotas: [
       { metric: "api_calls", limit: 3000, enforcement: "hard" },
       { metric: "tokens", limit: 100_000, enforcement: "soft" },
@@ -75,7 +75,7 @@ async function seed() {
 
   for (const seedTenant of SEED_TENANTS) {
     const [tenant] = await db.insert(tenants).values({ name: seedTenant.name }).returning();
-    if (!tenant) throw new Error(`No se pudo crear el tenant ${seedTenant.name}`);
+    if (!tenant) throw new Error(`Failed to create tenant ${seedTenant.name}`);
 
     const passwordHash = await hashPassword(DEMO_PASSWORD);
     await db.insert(users).values({
@@ -117,20 +117,22 @@ async function seed() {
     });
   }
 
-  console.log(`\nSeed completado: ${summary.length} tenants con ${DAYS_OF_HISTORY} dias de uso.\n`);
+  console.log(
+    `\nSeed complete: ${summary.length} tenants with ${DAYS_OF_HISTORY} days of usage.\n`,
+  );
   for (const row of summary) {
     console.log(`— ${row.tenant}`);
     console.log(`  login:   ${row.email} / ${row.password}`);
     console.log(`  API key: ${row.apiKey}`);
   }
   console.log(
-    "\nGuarda estas API keys ahora: no se pueden volver a mostrar (solo se persiste su hash).\n",
+    "\nSave these API keys now: they cannot be shown again (only their hash is persisted).\n",
   );
 }
 
 seed()
   .then(() => closeDb())
   .catch((error) => {
-    console.error("Fallo el seed:", error);
+    console.error("Seed failed:", error);
     process.exit(1);
   });

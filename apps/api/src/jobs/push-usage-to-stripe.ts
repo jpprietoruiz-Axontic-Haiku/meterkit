@@ -4,14 +4,14 @@ import { tenants, usageAggregates } from "../db/schema";
 import { getStripeClient } from "../lib/stripe";
 
 /**
- * Reporta a Stripe (Billing Meters) el consumo aun no informado de cada tenant
- * con suscripcion activa. Pensado para invocarse periodicamente desde un
- * scheduler externo (Railway cron job / GitHub Actions schedule) — ver README.
- * No es un worker de cola ni un proceso persistente: es un script idempotente
- * de una sola pasada, a proposito, para mantener el alcance de MeterKit acotado.
+ * Reports to Stripe (Billing Meters) the not-yet-reported consumption of each
+ * tenant with an active subscription. Meant to be invoked periodically from an
+ * external scheduler (Railway cron job / GitHub Actions schedule) — see README.
+ * It is not a queue worker or a persistent process: it is deliberately a single-pass
+ * idempotent script, to keep MeterKit's scope bounded.
  *
- * Convencion: cada `metric` debe tener configurado en Stripe un Billing Meter
- * cuyo event_name coincida exactamente con el nombre del metric.
+ * Convention: each `metric` must have a Billing Meter configured in Stripe
+ * whose event_name exactly matches the metric's name.
  */
 export async function pushUsageToStripe(): Promise<{ pushed: number; failed: number }> {
   const stripe = getStripeClient();
@@ -59,7 +59,7 @@ export async function pushUsageToStripe(): Promise<{ pushed: number; failed: num
       } catch (error) {
         failed += 1;
         console.error(
-          `Fallo al reportar a Stripe tenant=${tenant.id} metric=${row.metric} period=${row.period.toISOString()}:`,
+          `Failed to report to Stripe tenant=${tenant.id} metric=${row.metric} period=${row.period.toISOString()}:`,
           error,
         );
       }
@@ -72,11 +72,11 @@ export async function pushUsageToStripe(): Promise<{ pushed: number; failed: num
 if (import.meta.main) {
   pushUsageToStripe()
     .then(({ pushed, failed }) => {
-      console.log(`Push a Stripe completado: ${pushed} filas reportadas, ${failed} fallidas.`);
+      console.log(`Push to Stripe completed: ${pushed} rows reported, ${failed} failed.`);
       return closeDb();
     })
     .catch((error) => {
-      console.error("Fallo el push de usage a Stripe:", error);
+      console.error("Usage push to Stripe failed:", error);
       process.exit(1);
     });
 }

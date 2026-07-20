@@ -17,8 +17,8 @@ export const quotaEnforcementEnum = pgEnum("quota_enforcement", ["soft", "hard"]
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
 export type QuotaEnforcement = (typeof quotaEnforcementEnum.enumValues)[number];
 
-// Un tenant = una cuenta cliente. api_key_hash es el secreto para POST /v1/usage;
-// nunca se guarda en claro (ver hito 2).
+// A tenant = a customer account. api_key_hash is the secret for POST /v1/usage;
+// it is never stored in plaintext (see milestone 2).
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -43,8 +43,8 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Log crudo, inmutable, de cada unidad de consumo. Fuente de verdad; usage_aggregates
-// se recalcula/actualiza a partir de esta tabla y puede reconstruirse si hace falta.
+// Raw, immutable log of every unit of consumption. Source of truth; usage_aggregates
+// is recalculated/updated from this table and can be rebuilt from it if needed.
 export const usageEvents = pgTable(
   "usage_events",
   {
@@ -59,9 +59,9 @@ export const usageEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    // Indice normal (NO unico): es habitual que dos eventos del mismo
-    // tenant/metric caigan en el mismo timestamp bajo escritura concurrente.
-    // Solo acelera el rango de fechas por tenant+metric, no restringe nada.
+    // Regular index (NOT unique): it's common for two events of the same
+    // tenant/metric to land on the same timestamp under concurrent writes.
+    // This only speeds up the date range query per tenant+metric, it doesn't restrict anything.
     index("usage_events_tenant_metric_created_idx").on(
       table.tenantId,
       table.metric,
@@ -70,9 +70,9 @@ export const usageEvents = pgTable(
   ],
 );
 
-// Materialización por (tenant, periodo, metric) para que el dashboard no agregue
-// usage_events en caliente. `period` es el inicio del periodo en UTC (día u hora,
-// truncado) — ver DECISIONS.md en hito 7 para la justificación de la estrategia.
+// Materialized by (tenant, period, metric) so the dashboard doesn't have to
+// aggregate usage_events on the fly. `period` is the start of the period in UTC
+// (day or hour, truncated) — see DECISIONS.md in milestone 7 for the rationale behind the strategy.
 export const usageAggregates = pgTable(
   "usage_aggregates",
   {
@@ -83,13 +83,13 @@ export const usageAggregates = pgTable(
     period: timestamp("period", { withTimezone: true }).notNull(),
     metric: text("metric").notNull(),
     total: numeric("total", { precision: 20, scale: 6 }).notNull().default("0"),
-    // Coste estimado acumulado (suma de quantity * unitCost de cada evento). Se
-    // mantiene junto a `total` en el mismo upsert para que el dashboard no tenga
-    // que recalcularlo a partir de usage_events.
+    // Accumulated estimated cost (sum of quantity * unitCost for each event). It
+    // is kept alongside `total` in the same upsert so the dashboard doesn't have
+    // to recalculate it from usage_events.
     costTotal: numeric("cost_total", { precision: 20, scale: 6 }).notNull().default("0"),
-    // Cuanto de `total` ya se reporto a Stripe como usage record. El job de push
-    // (hito 5) reporta solo el delta (total - stripePushedTotal) y luego lo iguala,
-    // evitando reportar dos veces el mismo consumo.
+    // How much of `total` has already been reported to Stripe as a usage record. The
+    // push job (milestone 5) reports only the delta (total - stripePushedTotal) and then
+    // sets it equal, avoiding reporting the same consumption twice.
     stripePushedTotal: numeric("stripe_pushed_total", { precision: 20, scale: 6 })
       .notNull()
       .default("0"),
@@ -119,8 +119,8 @@ export const quotas = pgTable(
   (table) => [uniqueIndex("quotas_tenant_metric_idx").on(table.tenantId, table.metric)],
 );
 
-// Deduplicación estándar de webhooks de Stripe: un stripe_event_id solo se procesa
-// una vez. No hay lease/reclaim ni reintentos de cobro — fuera de alcance de MeterKit.
+// Standard Stripe webhook deduplication: a stripe_event_id is only processed
+// once. There is no lease/reclaim or billing retries — out of scope for MeterKit.
 export const webhookEvents = pgTable("webhook_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   stripeEventId: text("stripe_event_id").notNull().unique(),

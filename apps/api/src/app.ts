@@ -15,8 +15,8 @@ export function createApp() {
   const app = new Hono<AppEnv>();
 
   app.use("*", logger());
-  // El dashboard (Vercel) y la API (Railway) viven en dominios distintos en
-  // produccion; en local el proxy de Vite evita CORS por completo.
+  // The dashboard (Vercel) and the API (Railway) live on different domains in
+  // production; locally the Vite proxy avoids CORS entirely.
   app.use("*", cors({ origin: env.APP_BASE_URL }));
 
   app.onError((err, c) => {
@@ -24,10 +24,10 @@ export function createApp() {
       return c.json({ error: err.message }, err.status);
     }
     if (err instanceof ZodError) {
-      return c.json({ error: "Datos invalidos", details: err.flatten() }, 400);
+      return c.json({ error: "Invalid data", details: err.flatten() }, 400);
     }
     console.error(err);
-    return c.json({ error: "Error interno" }, 500);
+    return c.json({ error: "Internal error" }, 500);
   });
 
   app.get("/health", (c) => c.json({ status: "ok" }));

@@ -50,19 +50,19 @@ async function applyStripeEvent(event: Stripe.Event) {
       break;
     }
     default:
-      // Otros eventos se reconocen (y quedan deduplicados) sin cambiar estado.
+      // Other events are acknowledged (and deduplicated) without changing state.
       break;
   }
 }
 
 export const webhookRoutes = new Hono<AppEnv>().post("/stripe", async (c) => {
   if (!env.STRIPE_WEBHOOK_SECRET) {
-    throw new HTTPException(500, { message: "STRIPE_WEBHOOK_SECRET no esta configurado" });
+    throw new HTTPException(500, { message: "STRIPE_WEBHOOK_SECRET is not configured" });
   }
 
   const signature = c.req.header("stripe-signature");
   if (!signature) {
-    throw new HTTPException(400, { message: "Falta el header stripe-signature" });
+    throw new HTTPException(400, { message: "Missing stripe-signature header" });
   }
 
   const rawBody = await c.req.text();
@@ -70,22 +70,22 @@ export const webhookRoutes = new Hono<AppEnv>().post("/stripe", async (c) => {
 
   let event: Stripe.Event;
   try {
-    // constructEventAsync (no constructEvent): en Bun, el SDK de Stripe usa un
-    // crypto provider basado en SubtleCrypto (siempre asincrono) en vez del de
-    // Node — la variante sincrona lanza "cannot be used in a synchronous
-    // context" en este runtime.
+    // constructEventAsync (not constructEvent): on Bun, the Stripe SDK uses a
+    // SubtleCrypto-based crypto provider (always asynchronous) instead of
+    // Node's — the synchronous variant throws "cannot be used in a synchronous
+    // context" on this runtime.
     event = await stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
       env.STRIPE_WEBHOOK_SECRET,
     );
   } catch {
-    throw new HTTPException(400, { message: "Firma de webhook invalida" });
+    throw new HTTPException(400, { message: "Invalid webhook signature" });
   }
 
-  // Deduplicacion estandar: un stripe_event_id solo se procesa una vez. Si el
-  // INSERT no inserta nada es que ya se proceso (reintento de Stripe) y se
-  // responde 200 sin repetir efectos secundarios.
+  // Standard deduplication: a stripe_event_id is only processed once. If the
+  // INSERT inserts nothing, it means it was already processed (a Stripe
+  // retry), and we respond 200 without repeating side effects.
   const [inserted] = await db
     .insert(webhookEvents)
     .values({ stripeEventId: event.id, eventType: event.type })

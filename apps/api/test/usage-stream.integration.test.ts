@@ -30,38 +30,38 @@ async function createTenantWithApiKey() {
 
 async function readFirstSseEvent(res: Response): Promise<unknown> {
   const reader = res.body?.getReader();
-  if (!reader) throw new Error("La respuesta no tiene body de stream");
+  if (!reader) throw new Error("The response has no stream body");
 
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Timeout esperando el primer evento SSE")), 5000),
+    setTimeout(() => reject(new Error("Timeout waiting for the first SSE event")), 5000),
   );
 
   const chunk = await Promise.race([reader.read(), timeout]);
   await reader.cancel().catch(() => {});
 
-  if (chunk.done || !chunk.value) throw new Error("Stream cerrado sin datos");
+  if (chunk.done || !chunk.value) throw new Error("Stream closed without data");
   const text = new TextDecoder().decode(chunk.value);
   const dataLine = text.split("\n").find((line) => line.startsWith("data:"));
-  if (!dataLine) throw new Error(`No se encontro linea "data:" en: ${text}`);
+  if (!dataLine) throw new Error(`No "data:" line found in: ${text}`);
   return JSON.parse(dataLine.slice("data:".length).trim());
 }
 
-// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
-// por todos los archivos de test dentro del mismo proceso de `bun test`.
+// No afterAll(closeDb): the Postgres client is a singleton shared by all
+// test files within the same `bun test` process.
 beforeEach(resetDatabase);
 
 describe("GET /v1/usage/stream", () => {
-  it("rechaza sin token (ni header ni query param) con 401", async () => {
+  it("rejects without a token (neither header nor query param) with 401", async () => {
     const res = await app.request("/v1/usage/stream");
     expect(res.status).toBe(401);
   });
 
-  it("rechaza un token invalido con 401", async () => {
-    const res = await app.request("/v1/usage/stream?token=esto-no-es-un-jwt");
+  it("rejects an invalid token with 401", async () => {
+    const res = await app.request("/v1/usage/stream?token=this-is-not-a-jwt");
     expect(res.status).toBe(401);
   });
 
-  it("acepta el token por query param (EventSource no puede mandar headers) y emite un snapshot", async () => {
+  it("accepts the token via query param (EventSource cannot send headers) and emits a snapshot", async () => {
     const { token, apiKey } = await createTenantWithApiKey();
 
     await app.request("/v1/usage", {

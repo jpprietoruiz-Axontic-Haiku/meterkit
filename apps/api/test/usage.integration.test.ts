@@ -42,12 +42,12 @@ function postUsage(apiKey: string, body: Record<string, unknown>) {
   });
 }
 
-// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
-// por todos los archivos de test dentro del mismo proceso de `bun test`.
+// No afterAll(closeDb): the Postgres client is a singleton shared by all
+// test files within the same `bun test` process.
 beforeEach(resetDatabase);
 
 describe("POST /v1/usage", () => {
-  it("rechaza requests sin API key con 401", async () => {
+  it("rejects requests without an API key with 401", async () => {
     const res = await app.request("/v1/usage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,18 +56,18 @@ describe("POST /v1/usage", () => {
     expect(res.status).toBe(401);
   });
 
-  it("rechaza una API key invalida con 401", async () => {
+  it("rejects an invalid API key with 401", async () => {
     const res = await postUsage("mk_live_no-existe", { metric: "api_calls", quantity: 1 });
     expect(res.status).toBe(401);
   });
 
-  it("rechaza payloads invalidos con 400", async () => {
+  it("rejects invalid payloads with 400", async () => {
     const { apiKey } = await createTenantWithApiKey("Acme", "owner@acme.test");
     const res = await postUsage(apiKey, { metric: "", quantity: -1 });
     expect(res.status).toBe(400);
   });
 
-  it("registra un evento y crea su agregado del dia", async () => {
+  it("records an event and creates its daily aggregate", async () => {
     const { apiKey } = await createTenantWithApiKey("Acme", "owner@acme.test");
 
     const res = await postUsage(apiKey, { metric: "api_calls", quantity: 5, unitCost: 0.002 });
@@ -82,7 +82,7 @@ describe("POST /v1/usage", () => {
     expect(Number(body.aggregate.total)).toBe(5);
   });
 
-  it("acumula el total del agregado en llamadas sucesivas del mismo dia y metric", async () => {
+  it("accumulates the aggregate total across successive calls for the same day and metric", async () => {
     const { apiKey } = await createTenantWithApiKey("Acme", "owner@acme.test");
 
     await postUsage(apiKey, { metric: "tokens", quantity: 100 });
@@ -93,7 +93,7 @@ describe("POST /v1/usage", () => {
     expect(Number(body.aggregate.total)).toBe(351);
   });
 
-  it("no pierde incrementos bajo escritura concurrente (upsert atomico)", async () => {
+  it("does not lose increments under concurrent writes (atomic upsert)", async () => {
     const { apiKey } = await createTenantWithApiKey("Acme", "owner@acme.test");
 
     const CONCURRENT_WRITES = 20;
@@ -103,7 +103,7 @@ describe("POST /v1/usage", () => {
       ),
     );
 
-    // Verificamos el total via el propio endpoint autenticado del tenant dueno de la key.
+    // We verify the total via the authenticated endpoint of the tenant that owns the key.
     const registerRes = await app.request("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -121,8 +121,8 @@ describe("POST /v1/usage", () => {
   });
 });
 
-describe("GET /v1/usage — aislamiento multi-tenant", () => {
-  it("un tenant nunca ve agregados de otro tenant, aunque usen el mismo nombre de metric", async () => {
+describe("GET /v1/usage — multi-tenant isolation", () => {
+  it("a tenant never sees another tenant's aggregates, even if they use the same metric name", async () => {
     const tenantA = await createTenantWithApiKey("Tenant A", "owner-a@test.com");
     const tenantB = await createTenantWithApiKey("Tenant B", "owner-b@test.com");
 
@@ -138,7 +138,7 @@ describe("GET /v1/usage — aislamiento multi-tenant", () => {
     expect(Number(bodyA.aggregates[0]?.total)).toBe(10);
   });
 
-  it("rechaza lecturas sin JWT con 401", async () => {
+  it("rejects reads without a JWT with 401", async () => {
     const res = await app.request("/v1/usage");
     expect(res.status).toBe(401);
   });

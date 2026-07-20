@@ -60,12 +60,12 @@ async function getUsageTotal(token: string, metric: string) {
   return body.aggregates.reduce((sum, row) => sum + Number(row.total), 0);
 }
 
-// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
-// por todos los archivos de test dentro del mismo proceso de `bun test`.
+// No afterAll(closeDb): the Postgres client is a singleton shared by all
+// test files within the same `bun test` process.
 beforeEach(resetDatabase);
 
 describe("POST /quotas", () => {
-  it("solo owner/admin puede configurar cuotas (member -> 403)", async () => {
+  it("only owner/admin can configure quotas (member -> 403)", async () => {
     const tenant = await createTenant("Acme", "owner@acme.test");
     const [member] = await db
       .insert(users)
@@ -76,7 +76,7 @@ describe("POST /quotas", () => {
         role: "member",
       })
       .returning();
-    if (!member) throw new Error("setup fallido");
+    if (!member) throw new Error("setup failed");
     const memberToken = await signAuthToken({
       sub: member.id,
       tenantId: member.tenantId,
@@ -92,7 +92,7 @@ describe("POST /quotas", () => {
     expect(res.status).toBe(403);
   });
 
-  it("owner puede crear y actualizar (upsert) una cuota", async () => {
+  it("owner can create and update (upsert) a quota", async () => {
     const tenant = await createTenant("Acme", "owner@acme.test");
 
     const created = await setQuota(tenant.token, {
@@ -122,8 +122,8 @@ describe("POST /quotas", () => {
   });
 });
 
-describe("Enforcement soft", () => {
-  it("permite superar el limite pero incluye quotaWarning en la respuesta", async () => {
+describe("Soft enforcement", () => {
+  it("allows exceeding the limit but includes quotaWarning in the response", async () => {
     const tenant = await createTenant("Acme", "owner@acme.test");
     await setQuota(tenant.token, { metric: "soft_metric", limit: 100, enforcement: "soft" });
 
@@ -141,8 +141,8 @@ describe("Enforcement soft", () => {
   });
 });
 
-describe("Enforcement hard", () => {
-  it("bloquea con 429 y mensaje claro, sin registrar el evento que lo excede", async () => {
+describe("Hard enforcement", () => {
+  it("blocks with 429 and a clear message, without recording the event that exceeds it", async () => {
     const tenant = await createTenant("Acme", "owner@acme.test");
     await setQuota(tenant.token, { metric: "hard_metric", limit: 100, enforcement: "hard" });
 
@@ -153,23 +153,23 @@ describe("Enforcement hard", () => {
     const overBody = (await overLimit.json()) as { error: string };
     expect(overLimit.status).toBe(429);
     expect(overBody.error).toContain("hard_metric");
-    expect(overBody.error.toLowerCase()).toContain("cuota");
+    expect(overBody.error.toLowerCase()).toContain("quota");
 
-    // El intento bloqueado no debe haberse sumado al agregado.
+    // The blocked attempt must not have been added to the aggregate.
     expect(await getUsageTotal(tenant.token, "hard_metric")).toBe(90);
 
-    // Justo en el limite (100) debe permitirse.
+    // Right at the limit (100) it should be allowed.
     const atLimit = await postUsage(tenant.apiKey, { metric: "hard_metric", quantity: 10 });
     expect(atLimit.status).toBe(201);
     expect(await getUsageTotal(tenant.token, "hard_metric")).toBe(100);
   });
 
-  it("las cuotas de un tenant no afectan a otro tenant con el mismo nombre de metric", async () => {
+  it("one tenant's quotas do not affect another tenant with the same metric name", async () => {
     const tenantA = await createTenant("Tenant A", "owner-a@test.com");
     const tenantB = await createTenant("Tenant B", "owner-b@test.com");
 
     await setQuota(tenantA.token, { metric: "shared_metric", limit: 10, enforcement: "hard" });
-    // Tenant B no configura cuota: no deberia sufrir enforcement alguno.
+    // Tenant B does not configure a quota: it should not experience any enforcement.
 
     const blockedForA = await postUsage(tenantA.apiKey, { metric: "shared_metric", quantity: 50 });
     const allowedForB = await postUsage(tenantB.apiKey, { metric: "shared_metric", quantity: 50 });

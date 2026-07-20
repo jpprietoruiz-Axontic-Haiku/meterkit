@@ -12,15 +12,16 @@ export type RecordUsageInput = {
 };
 
 /**
- * Registra un evento de uso y actualiza su agregado diario (total + coste
- * estimado) en una sola transaccion. El agregado se mantiene con un upsert
- * atomico (INSERT ... ON CONFLICT DO UPDATE total = total + delta): un solo
- * round-trip, sin leer-antes-de-escribir, seguro bajo escritura concurrente
- * porque el incremento ocurre dentro de la fila a nivel de motor, no en la
- * aplicacion. Ver DECISIONS.md.
+ * Records a usage event and updates its daily aggregate (total + estimated
+ * cost) in a single transaction. The aggregate is maintained with an atomic
+ * upsert (INSERT ... ON CONFLICT DO UPDATE total = total + delta): a single
+ * round-trip, no read-before-write, safe under concurrent writes because the
+ * increment happens within the row at the engine level, not in the
+ * application. See DECISIONS.md.
  *
- * `at` existe para poder generar historico realista en el seed (hito 6); en
- * produccion siempre se usa el `now()` implicito de `recordUsageEvent`.
+ * `at` exists so realistic historical data can be generated in the seed
+ * (milestone 6); in production the implicit `now()` from `recordUsageEvent` is
+ * always used.
  */
 export async function recordUsageEventAt(input: RecordUsageInput, at: Date) {
   const period = startOfUtcDay(at);
@@ -39,7 +40,7 @@ export async function recordUsageEventAt(input: RecordUsageInput, at: Date) {
         createdAt: at,
       })
       .returning();
-    if (!event) throw new Error("No se pudo registrar el evento de uso");
+    if (!event) throw new Error("Failed to record the usage event");
 
     const [aggregate] = await tx
       .insert(usageAggregates)
@@ -59,7 +60,7 @@ export async function recordUsageEventAt(input: RecordUsageInput, at: Date) {
         },
       })
       .returning();
-    if (!aggregate) throw new Error("No se pudo actualizar el agregado de uso");
+    if (!aggregate) throw new Error("Failed to update the usage aggregate");
 
     return { event, aggregate };
   });

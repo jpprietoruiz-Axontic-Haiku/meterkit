@@ -4,13 +4,13 @@ import { env } from "../env";
 let client: Stripe | null = null;
 
 /**
- * Cliente de Stripe perezoso: solo exige STRIPE_SECRET_KEY cuando una ruta de
- * billing realmente lo usa, para no romper el resto de la API (auth, metering,
- * cuotas) en entornos donde Stripe todavia no esta configurado.
+ * Lazy Stripe client: only requires STRIPE_SECRET_KEY when a billing route
+ * actually uses it, so the rest of the API (auth, metering, quotas) doesn't
+ * break in environments where Stripe isn't configured yet.
  */
 export function getStripeClient(): Stripe {
   if (!env.STRIPE_SECRET_KEY) {
-    throw new Error("STRIPE_SECRET_KEY no esta configurado");
+    throw new Error("STRIPE_SECRET_KEY is not configured");
   }
   if (!client) {
     client = new Stripe(env.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient() });

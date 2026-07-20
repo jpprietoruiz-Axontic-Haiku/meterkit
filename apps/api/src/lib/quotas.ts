@@ -15,10 +15,10 @@ export type QuotaEvaluation = {
 };
 
 /**
- * Decision pura de enforcement: dado el consumo ya acumulado en el periodo,
- * la cantidad entrante y la cuota configurada (si la hay), decide si se
- * bloquea (hard) o solo se avisa (soft). Sin I/O — testeable de forma
- * aislada.
+ * Pure enforcement decision: given the consumption already accumulated in the
+ * period, the incoming quantity, and the configured quota (if any), decides
+ * whether to block (hard) or just warn (soft). No I/O — testable in
+ * isolation.
  */
 export function evaluateQuota(
   currentTotal: number,
@@ -42,7 +42,7 @@ export function evaluateQuota(
   };
 }
 
-/** Suma los agregados diarios del tenant/metric desde el inicio del mes calendario UTC. */
+/** Sums the daily aggregates for the tenant/metric since the start of the UTC calendar month. */
 export async function getCurrentMonthTotal(tenantId: string, metric: string): Promise<number> {
   const monthStart = startOfUtcMonth(new Date());
 
@@ -60,7 +60,7 @@ export async function getCurrentMonthTotal(tenantId: string, metric: string): Pr
   return Number(row?.total ?? 0);
 }
 
-/** Enforcement mensual: consulta la cuota y el consumo acumulado y aplica `evaluateQuota`. */
+/** Monthly enforcement: looks up the quota and accumulated consumption and applies `evaluateQuota`. */
 export async function checkQuota(
   tenantId: string,
   metric: string,

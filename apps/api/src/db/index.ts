@@ -8,7 +8,7 @@ const queryClient = postgres(env.DATABASE_URL);
 export const db = drizzle(queryClient, { schema });
 export type Database = typeof db;
 
-/** Cierra el pool de conexiones. Uso: scripts one-off y `afterAll` en tests de integracion. */
+/** Closes the connection pool. Usage: one-off scripts and `afterAll` in integration tests. */
 export async function closeDb(): Promise<void> {
   await queryClient.end();
 }

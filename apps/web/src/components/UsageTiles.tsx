@@ -1,11 +1,11 @@
 import { useUsageStream } from "../lib/useUsageStream";
 
 function formatNumber(n: number): string {
-  return new Intl.NumberFormat("es-ES").format(Math.round(n * 100) / 100);
+  return new Intl.NumberFormat("en-US").format(Math.round(n * 100) / 100);
 }
 
 function formatCost(n: number): string {
-  return new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" }).format(n);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 }
 
 export function UsageTiles({ token }: { token: string }) {
@@ -17,14 +17,14 @@ export function UsageTiles({ token }: { token: string }) {
   return (
     <section className="panel">
       <div className="panel-header">
-        <h2>Consumo del mes en curso</h2>
+        <h2>Current month usage</h2>
         <span className={`stream-dot stream-${status}`} title={`Stream: ${status}`} />
       </div>
 
       {!snapshot ? (
-        <p className="muted">Conectando al stream en vivo…</p>
+        <p className="muted">Connecting to live stream…</p>
       ) : snapshot.usage.length === 0 ? (
-        <p className="muted">Todavia no hay consumo registrado este mes.</p>
+        <p className="muted">No usage recorded yet this month.</p>
       ) : (
         <>
           <div className="tiles-grid">
@@ -36,7 +36,7 @@ export function UsageTiles({ token }: { token: string }) {
                 <div className="tile" key={row.metric}>
                   <div className="tile-metric">{row.metric}</div>
                   <div className="tile-total">{formatNumber(row.total)}</div>
-                  <div className="tile-cost">{formatCost(row.cost)} estimado</div>
+                  <div className="tile-cost">{formatCost(row.cost)} estimated</div>
                   {quota && (
                     <div className="quota-bar-wrap">
                       <div className="quota-bar">
@@ -56,7 +56,7 @@ export function UsageTiles({ token }: { token: string }) {
             })}
           </div>
           <p className="total-cost">
-            Coste estimado total del mes: <strong>{formatCost(totalCost)}</strong>
+            Total estimated cost this month: <strong>{formatCost(totalCost)}</strong>
           </p>
         </>
       )}

@@ -1,7 +1,7 @@
 import type { AuthResponse, MeResponse, Quota, UsageHistoryPoint } from "./types";
 
-// Vacio en dev: el proxy de Vite (vite.config.ts) reenvia a la API local.
-// En produccion (Vercel) se fija a la URL publica de la API en Railway.
+// Empty in dev: the Vite proxy (vite.config.ts) forwards to the local API.
+// In production (Vercel) this is set to the public API URL on Railway.
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ApiError extends Error {}

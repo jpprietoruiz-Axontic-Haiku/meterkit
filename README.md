@@ -1,36 +1,36 @@
 # MeterKit
 
-Starter SaaS multi-tenant, de nivel produccion, que **mide consumo por tenant** (llamadas a
-API, tokens de LLM, o cualquier metric propio), **aplica cuotas** y **factura por uso** vía
-Stripe metered billing, con un dashboard de coste en tiempo real.
+Production-grade, multi-tenant SaaS starter that **meters consumption per tenant** (API
+calls, LLM tokens, or any custom metric), **enforces quotas**, and **bills for usage** via
+Stripe metered billing, with a real-time cost dashboard.
 
-Proyecto de portfolio: demuestra la fontaneria de un SaaS de produccion — multi-tenancy con
-aislamiento verificado por tests, auth por roles, metering eficiente, cuotas, webhooks
-idempotentes y billing por uso — sin la complejidad de un producto real detras.
+Portfolio project: it demonstrates the plumbing of a production SaaS — multi-tenancy with
+test-verified isolation, role-based auth, efficient metering, quotas, idempotent webhooks,
+and usage-based billing — without the complexity of a real product behind it.
 
-## Alcance (léelo antes de comparar con otra cosa)
+## Scope (read this before comparing it to something else)
 
-MeterKit es **metering + usage-based billing**: contar consumo, aplicar cuotas, reportarlo a
-Stripe. **No** es una herramienta de dunning ni de recuperación de pagos fallidos. No hay
-cascadas de reintento de cobro, ni generación de emails de recuperación, ni un motor de
-idempotencia con lease/reclaim bajo concurrencia. Los webhooks de Stripe se deduplican con
-una tabla estándar (`webhook_events`, único por `stripe_event_id`) — buena práctica básica de
-cualquier integración con Stripe, no un diferencial. Ver [DECISIONS.md](./DECISIONS.md) para
-el resto de decisiones de diseño y sus porqués.
+MeterKit is **metering + usage-based billing**: counting consumption, enforcing quotas,
+reporting it to Stripe. It is **not** a dunning or failed-payment recovery tool. There are no
+payment retry cascades, no recovery email generation, and no lease/reclaim idempotency engine
+under concurrency. Stripe webhooks are deduplicated with a standard table
+(`webhook_events`, unique on `stripe_event_id`) — basic good practice for any Stripe
+integration, not a differentiator. See [DECISIONS.md](./DECISIONS.md) for the rest of the
+design decisions and their rationale.
 
-## Arquitectura
+## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph Tenant["Sistema del tenant"]
-        C[Cliente / servicio]
+    subgraph Tenant["Tenant system"]
+        C[Client / service]
     end
 
     subgraph API["MeterKit API (Bun + Hono)"]
-        MW["Middleware API key\n(resuelve tenant)"]
-        Q["Enforcement de cuota\n(evaluateQuota)"]
-        AGG["recordUsageEvent\nupsert atomico"]
-        SSE["GET /v1/usage/stream\n(SSE, poll 3s)"]
+        MW["API key middleware\n(resolves tenant)"]
+        Q["Quota enforcement\n(evaluateQuota)"]
+        AGG["recordUsageEvent\natomic upsert"]
+        SSE["GET /v1/usage/stream\n(SSE, 3s poll)"]
     end
 
     subgraph DB["Postgres"]
@@ -40,33 +40,33 @@ flowchart LR
         WH[(webhook_events)]
     end
 
-    subgraph Stripe["Stripe (modo test)"]
+    subgraph Stripe["Stripe (test mode)"]
         BM[Billing Meters]
         WHK["Webhook\ncheckout / subscription.*"]
     end
 
     subgraph Dashboard["Dashboard (React)"]
-        UI[Tiles en vivo + cuotas + billing]
+        UI[Live tiles + quotas + billing]
     end
 
     C -- "x-api-key" --> MW --> Q
-    Q -- "429 si hard excede" --> C
+    Q -- "429 if hard exceeded" --> C
     Q -- "ok" --> AGG
     AGG --> UE
     AGG --> UA
-    Q -. "lee limite" .-> QT
+    Q -. "reads limit" .-> QT
 
     UI -- "JWT via querystring" --> SSE --> UA
-    SSE -. "lee" .-> QT
+    SSE -. "reads" .-> QT
 
-    JOB["push-usage-to-stripe\n(script periodico externo)"] -- "delta no reportado" --> UA
+    JOB["push-usage-to-stripe\n(external periodic script)"] -- "unreported delta" --> UA
     JOB -- "meter events" --> BM
 
-    WHK -- "dedup por stripe_event_id" --> WH
-    WHK -- "actualiza estado" --> Tenants[(tenants)]
+    WHK -- "dedup by stripe_event_id" --> WH
+    WHK -- "updates status" --> Tenants[(tenants)]
 ```
 
-### Flujo de billing
+### Billing flow
 
 ```mermaid
 sequenceDiagram
@@ -75,104 +75,103 @@ sequenceDiagram
     participant S as Stripe
 
     U->>API: POST /billing/checkout (JWT)
-    API->>S: crea/reutiliza Customer + Checkout Session (metered)
-    S-->>U: redirect a Checkout
-    U->>S: completa el pago (modo test)
+    API->>S: create/reuse Customer + Checkout Session (metered)
+    S-->>U: redirect to Checkout
+    U->>S: completes payment (test mode)
     S->>API: webhook checkout.session.completed
-    API->>API: INSERT webhook_events (dedup por event id)
+    API->>API: INSERT webhook_events (dedup by event id)
     API->>API: UPDATE tenants (stripeSubscriptionId, subscriptionStatus)
-    Note over API: reintentos de Stripe con el mismo event id no reprocesan
+    Note over API: Stripe retries with the same event id are not reprocessed
 ```
 
 ## Stack
 
-| Capa | Tecnologia |
+| Layer | Technology |
 | --- | --- |
 | Backend | Bun + Hono + Drizzle ORM + Postgres |
-| Auth | JWT (jose, HS256) multi-role — owner/admin/member — + API key por tenant |
-| Billing | Stripe metered/usage-based billing + Billing Portal + Billing Meters (modo test) |
+| Auth | JWT (jose, HS256) multi-role — owner/admin/member — + per-tenant API key |
+| Billing | Stripe metered/usage-based billing + Billing Portal + Billing Meters (test mode) |
 | Real-time | SSE (Server-Sent Events) |
 | Frontend | React + Vite + TypeScript |
 | Deploy | Railway (API + Postgres) + Vercel (dashboard) |
-| CI | GitHub Actions — lint, typecheck, test (Postgres real), build |
+| CI | GitHub Actions — lint, typecheck, test (real Postgres), build |
 
-## Estructura
+## Structure
 
 ```
 apps/
-  api/    Bun + Hono + Drizzle — API REST, metering, cuotas, Stripe, webhooks, SSE
-  web/    Vite + React + TS — dashboard de uso, cuotas y facturación
+  api/    Bun + Hono + Drizzle — REST API, metering, quotas, Stripe, webhooks, SSE
+  web/    Vite + React + TS — usage, quota and billing dashboard
 ```
 
-## Superficie de la API
+## API surface
 
-| Metodo | Ruta | Auth | Descripcion |
+| Method | Route | Auth | Description |
 | --- | --- | --- | --- |
-| POST | `/auth/register` | — | Crea un tenant nuevo y su usuario owner. Devuelve JWT. |
-| POST | `/auth/login` | — | Login. Devuelve JWT. |
-| GET | `/auth/me` | JWT | Perfil del usuario autenticado + su tenant. |
-| POST | `/auth/api-key` | JWT (owner/admin) | Rota la API key del tenant (se muestra en claro una única vez). |
-| POST | `/v1/usage` | API key (`x-api-key`) | Registra un evento de uso; aplica enforcement de cuota. |
-| GET | `/v1/usage` | JWT | Agregados diarios por rango de fechas y `metric` (histórico). |
-| GET | `/v1/usage/stream` | JWT (header o `?token=`) | SSE con el snapshot del mes en curso cada 3s. |
-| GET | `/quotas` | JWT | Lista las cuotas configuradas del tenant. |
-| POST | `/quotas` | JWT (owner/admin) | Crea o actualiza (upsert) el límite de un `metric`. |
-| POST | `/billing/checkout` | JWT (owner/admin) | Abre un Stripe Checkout de suscripción metered. |
-| GET | `/billing/portal` | JWT (owner/admin) | Abre el Stripe Billing Portal del tenant. |
-| POST | `/webhooks/stripe` | Firma de Stripe | Webhook idempotente (checkout, subscription.*). |
+| POST | `/auth/register` | — | Creates a new tenant and its owner user. Returns a JWT. |
+| POST | `/auth/login` | — | Login. Returns a JWT. |
+| GET | `/auth/me` | JWT | Authenticated user's profile + their tenant. |
+| POST | `/auth/api-key` | JWT (owner/admin) | Rotates the tenant's API key (shown in plaintext only once). |
+| POST | `/v1/usage` | API key (`x-api-key`) | Records a usage event; applies quota enforcement. |
+| GET | `/v1/usage` | JWT | Daily aggregates by date range and `metric` (historical). |
+| GET | `/v1/usage/stream` | JWT (header or `?token=`) | SSE with the current month's snapshot every 3s. |
+| GET | `/quotas` | JWT | Lists the tenant's configured quotas. |
+| POST | `/quotas` | JWT (owner/admin) | Creates or updates (upsert) a `metric`'s limit. |
+| POST | `/billing/checkout` | JWT (owner/admin) | Opens a metered subscription Stripe Checkout session. |
+| GET | `/billing/portal` | JWT (owner/admin) | Opens the tenant's Stripe Billing Portal. |
+| POST | `/webhooks/stripe` | Stripe signature | Idempotent webhook (checkout, subscription.*). |
 | GET | `/health` | — | Healthcheck. |
 
-## Modelo de datos
+## Data model
 
 `tenants`, `users`, `usage_events`, `usage_aggregates` (+ `cost_total`, `stripe_pushed_total`),
-`quotas`, `webhook_events`. Ver el esquema completo y comentado en
+`quotas`, `webhook_events`. See the full, commented schema in
 [`apps/api/src/db/schema.ts`](apps/api/src/db/schema.ts).
 
-## Desarrollo local
+## Local development
 
-Requisitos: [Bun](https://bun.sh) ≥ 1.3, Docker (para Postgres).
+Requirements: [Bun](https://bun.sh) ≥ 1.3, Docker (for Postgres).
 
 ```bash
-cp .env.example .env               # completar valores (ver comentarios en el archivo)
-cp apps/web/.env.example apps/web/.env   # opcional en local, necesario en Vercel
-docker compose up -d               # levanta Postgres en localhost:5432
+cp .env.example .env               # fill in values (see comments in the file)
+cp apps/web/.env.example apps/web/.env   # optional locally, required on Vercel
+docker compose up -d               # starts Postgres on localhost:5432
 bun install
-bun run db:migrate                 # aplica las migraciones de apps/api
-bun run db:seed                    # opcional: 3 tenants de demo con uso simulado
-bun run dev:api                    # API en http://localhost:3000
-bun run dev:web                    # dashboard en http://localhost:5173
+bun run db:migrate                 # applies apps/api migrations
+bun run db:seed                    # optional: 3 demo tenants with simulated usage
+bun run dev:api                    # API at http://localhost:3000
+bun run dev:web                    # dashboard at http://localhost:5173
 ```
 
-`bun run db:seed` imprime por consola el email/contraseña y la API key en claro de cada
-tenant de demo (Acme Inc, Globex Corp, Initech) — solo se muestra una vez, igual que en
-producción.
+`bun run db:seed` prints to the console the email/password and plaintext API key for each
+demo tenant (Acme Inc, Globex Corp, Initech) — shown only once, just like in production.
 
-### Configurar Stripe (modo test)
+### Configuring Stripe (test mode)
 
-1. Crea un producto con un **precio metered** (usage-based) en el dashboard de Stripe (modo
-   test) y copia su `price_id` a `STRIPE_METERED_PRICE_ID`.
-2. Crea un **Billing Meter** por cada `metric` que factures (p. ej. `api_calls`, `tokens`),
-   con `event_name` **igual al nombre del metric** — es la convención que usa
-   `push-usage-to-stripe` para reportar consumo.
-3. Con la [Stripe CLI](https://stripe.com/docs/stripe-cli), escucha webhooks localmente y
-   copia el `whsec_...` que te da a `STRIPE_WEBHOOK_SECRET`:
+1. Create a product with a **metered price** (usage-based) in the Stripe dashboard (test
+   mode) and copy its `price_id` to `STRIPE_METERED_PRICE_ID`.
+2. Create a **Billing Meter** for each `metric` you bill (e.g. `api_calls`, `tokens`), with
+   `event_name` **matching the metric name exactly** — this is the convention
+   `push-usage-to-stripe` uses to report consumption.
+3. Using the [Stripe CLI](https://stripe.com/docs/stripe-cli), listen for webhooks locally
+   and copy the `whsec_...` it gives you to `STRIPE_WEBHOOK_SECRET`:
    ```bash
    stripe listen --forward-to localhost:3000/webhooks/stripe
    ```
-4. Copia tu clave secreta de test a `STRIPE_SECRET_KEY`.
+4. Copy your test secret key to `STRIPE_SECRET_KEY`.
 
-## Scripts (raíz)
+## Scripts (root)
 
-| Script | Descripción |
+| Script | Description |
 | --- | --- |
-| `bun run dev:api` / `dev:web` | API / dashboard en modo desarrollo |
-| `bun run test` | Tests de todos los workspaces |
-| `bun run typecheck` | `tsc --noEmit` en todos los workspaces |
-| `bun run lint` / `lint:fix` | Biome (lint + formato) |
-| `bun run build` | Build de producción de API y dashboard |
-| `bun run db:migrate` | Aplica migraciones Drizzle contra `DATABASE_URL` |
-| `bun run db:seed` | Crea tenants de demo con uso simulado |
-| `bun --cwd apps/api run push-usage` | Reporta a Stripe el consumo aún no informado (ver [DECISIONS.md](./DECISIONS.md)) |
+| `bun run dev:api` / `dev:web` | API / dashboard in development mode |
+| `bun run test` | Tests across all workspaces |
+| `bun run typecheck` | `tsc --noEmit` across all workspaces |
+| `bun run lint` / `lint:fix` | Biome (lint + format) |
+| `bun run build` | Production build of the API and dashboard |
+| `bun run db:migrate` | Applies Drizzle migrations against `DATABASE_URL` |
+| `bun run db:seed` | Creates demo tenants with simulated usage |
+| `bun --cwd apps/api run push-usage` | Reports unreported consumption to Stripe (see [DECISIONS.md](./DECISIONS.md)) |
 
 ## Tests
 
@@ -182,32 +181,33 @@ bun run db:migrate
 bun run test
 ```
 
-- **Unit** (sin base de datos): `evaluateQuota` (enforcement de cuota), truncado de periodos,
-  primitivas de auth (password/JWT/API key).
-- **Integración** (contra Postgres real): aislamiento multi-tenant, RBAC, agregación bajo
-  escritura concurrente, enforcement de cuota end-to-end, idempotencia de webhooks, SSE.
+- **Unit** (no database): `evaluateQuota` (quota enforcement), period truncation,
+  auth primitives (password/JWT/API key).
+- **Integration** (against real Postgres): multi-tenant isolation, RBAC, aggregation under
+  concurrent writes, end-to-end quota enforcement, webhook idempotency, SSE.
 
-CI (`.github/workflows/ci.yml`) levanta un contenedor de Postgres y corre la suite completa
-en cada push/PR.
+CI (`.github/workflows/ci.yml`) spins up a Postgres container and runs the full suite on
+every push/PR.
 
-## Deploy
+## Deployment
 
-- **API + Postgres → Railway**: crea un servicio Postgres y un servicio para `apps/api`
-  (`bun run start`, tras `bun run db:migrate`). Variables de entorno: las de `.env.example`.
-- **Dashboard → Vercel**: build de `apps/web` (`vite build`), con `VITE_API_BASE_URL`
-  apuntando a la URL pública de la API en Railway.
-- En la API, `APP_BASE_URL` debe apuntar a la URL del dashboard en Vercel (se usa para CORS y
-  para las redirecciones de Stripe Checkout/Portal).
-- `bun --cwd apps/api run push-usage` debe programarse como cron externo (Railway cron job o
-  GitHub Actions `schedule`) — no corre como proceso persistente, ver
+- **API + Postgres → Railway**: create a Postgres service and a service for `apps/api`
+  (`bun run start`, after `bun run db:migrate`). Environment variables: the ones from
+  `.env.example`.
+- **Dashboard → Vercel**: build `apps/web` (`vite build`), with `VITE_API_BASE_URL`
+  pointing to the API's public URL on Railway.
+- On the API, `APP_BASE_URL` must point to the dashboard's URL on Vercel (used for CORS and
+  for Stripe Checkout/Portal redirects).
+- `bun --cwd apps/api run push-usage` must be scheduled as an external cron job (Railway
+  cron job or GitHub Actions `schedule`) — it does not run as a persistent process, see
   [DECISIONS.md](./DECISIONS.md).
 
-## Estado del proyecto
+## Project status
 
-- [x] Hito 1 — Scaffolding, schema Drizzle, docker-compose, CI
-- [x] Hito 2 — Auth (JWT, RBAC, API key), aislamiento de tenant
-- [x] Hito 3 — Metering (`POST`/`GET /v1/usage`, agregación)
-- [x] Hito 4 — Cuotas (soft/hard enforcement)
-- [x] Hito 5 — Stripe (checkout, portal, push de usage, webhooks)
-- [x] Hito 6 — Dashboard real-time (SSE) + seed
-- [x] Hito 7 — README + diagrama + `DECISIONS.md`
+- [x] Milestone 1 — Scaffolding, Drizzle schema, docker-compose, CI
+- [x] Milestone 2 — Auth (JWT, RBAC, API key), tenant isolation
+- [x] Milestone 3 — Metering (`POST`/`GET /v1/usage`, aggregation)
+- [x] Milestone 4 — Quotas (soft/hard enforcement)
+- [x] Milestone 5 — Stripe (checkout, portal, usage push, webhooks)
+- [x] Milestone 6 — Real-time dashboard (SSE) + seed
+- [x] Milestone 7 — README + diagram + `DECISIONS.md`

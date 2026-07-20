@@ -3,7 +3,7 @@ import type { AuthTokenPayload } from "./lib/jwt";
 export type AppEnv = {
   Variables: {
     user: AuthTokenPayload;
-    /** Tenant resuelto por API key (ver middleware/api-key.ts, hito 3). */
+    /** Tenant resolved via API key (see middleware/api-key.ts, milestone 3). */
     apiKeyTenantId: string;
   };
 };

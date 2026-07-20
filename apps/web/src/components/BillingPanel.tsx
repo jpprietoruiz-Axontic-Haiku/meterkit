@@ -22,7 +22,7 @@ export function BillingPanel({
       const { url } = await api.startCheckout(token);
       window.location.href = url;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo abrir el checkout.");
+      setError(err instanceof ApiError ? err.message : "Could not open checkout.");
     } finally {
       setLoading(null);
     }
@@ -35,7 +35,7 @@ export function BillingPanel({
       const { url } = await api.openBillingPortal(token);
       window.location.href = url;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo abrir el billing portal.");
+      setError(err instanceof ApiError ? err.message : "Could not open the billing portal.");
     } finally {
       setLoading(null);
     }
@@ -45,18 +45,18 @@ export function BillingPanel({
 
   return (
     <section className="panel">
-      <h2>Facturacion (Stripe, modo test)</h2>
+      <h2>Billing (Stripe, test mode)</h2>
       <p>
-        Plan: <strong>{profile.tenant.plan}</strong> — Estado de suscripcion:{" "}
+        Plan: <strong>{profile.tenant.plan}</strong> — Subscription status:{" "}
         <span className={`badge badge-${status === "active" ? "soft" : "hard"}`}>
-          {status ?? "sin suscripcion"}
+          {status ?? "no subscription"}
         </span>
       </p>
 
       {canManage ? (
         <div className="button-row">
           <button type="button" onClick={handleCheckout} disabled={loading !== null}>
-            {loading === "checkout" ? "Abriendo..." : "Suscribirse (metered)"}
+            {loading === "checkout" ? "Opening..." : "Subscribe (metered)"}
           </button>
           <button
             type="button"
@@ -64,11 +64,11 @@ export function BillingPanel({
             onClick={handlePortal}
             disabled={loading !== null}
           >
-            {loading === "portal" ? "Abriendo..." : "Gestionar facturacion"}
+            {loading === "portal" ? "Opening..." : "Manage billing"}
           </button>
         </div>
       ) : (
-        <p className="muted">Solo owner/admin puede gestionar la facturacion.</p>
+        <p className="muted">Only owner/admin can manage billing.</p>
       )}
       {error && <p className="auth-error">{error}</p>}
     </section>

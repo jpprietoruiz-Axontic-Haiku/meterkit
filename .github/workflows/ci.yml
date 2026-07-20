@@ -26,8 +26,8 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgres://meterkit:meterkit@localhost:5432/meterkit
       JWT_SECRET: ci-test-secret-must-be-at-least-32-chars
-      # Claves de test: no son secretos reales, solo permiten construir el
-      # cliente de Stripe y firmar/verificar webhooks localmente en los tests.
+      # Test keys: not real secrets, they only allow building the Stripe
+      # client and signing/verifying webhooks locally within the tests.
       STRIPE_SECRET_KEY: sk_test_ci_dummy_key_for_signature_only
       STRIPE_WEBHOOK_SECRET: whsec_ci_dummy_secret_for_tests
 

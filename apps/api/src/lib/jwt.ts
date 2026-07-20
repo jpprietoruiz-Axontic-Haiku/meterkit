@@ -31,7 +31,7 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenPayload> 
     typeof payload.role !== "string" ||
     typeof payload.email !== "string"
   ) {
-    throw new Error("Payload de JWT invalido");
+    throw new Error("Invalid JWT payload");
   }
 
   return {

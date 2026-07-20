@@ -19,7 +19,7 @@ export const quotaRoutes = new Hono<AppEnv>()
     const rows = await db.query.quotas.findMany({ where: eq(quotas.tenantId, tenantId) });
     return c.json({ quotas: rows });
   })
-  // Crea o actualiza el limite de un metric para el tenant. owner/admin unicamente.
+  // Creates or updates the limit for a metric for the tenant. owner/admin only.
   .post("/", requireAuth, requireRole("owner", "admin"), async (c) => {
     const body = upsertQuotaSchema.parse(await c.req.json());
     const tenantId = c.get("user").tenantId;

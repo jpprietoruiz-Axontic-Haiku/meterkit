@@ -12,18 +12,18 @@ import type { AppEnv } from "../types";
 async function getOwnTenant(tenantId: string) {
   const tenant = await db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
   if (!tenant) {
-    throw new HTTPException(404, { message: "Tenant no encontrado" });
+    throw new HTTPException(404, { message: "Tenant not found" });
   }
   return tenant;
 }
 
 export const billingRoutes = new Hono<AppEnv>()
-  // Crea (o reutiliza) el Customer de Stripe del tenant y abre un Checkout de
-  // suscripcion metered. Modo test: usa STRIPE_SECRET_KEY / STRIPE_METERED_PRICE_ID
-  // de test.
+  // Creates (or reuses) the tenant's Stripe Customer and opens a metered
+  // subscription Checkout. Test mode: uses a test STRIPE_SECRET_KEY /
+  // STRIPE_METERED_PRICE_ID.
   .post("/checkout", requireAuth, requireRole("owner", "admin"), async (c) => {
     if (!env.STRIPE_METERED_PRICE_ID) {
-      throw new HTTPException(500, { message: "STRIPE_METERED_PRICE_ID no esta configurado" });
+      throw new HTTPException(500, { message: "STRIPE_METERED_PRICE_ID is not configured" });
     }
 
     const authUser = c.get("user");
@@ -54,7 +54,7 @@ export const billingRoutes = new Hono<AppEnv>()
 
     return c.json({ url: session.url });
   })
-  // Sesion del Billing Portal de Stripe (cambiar tarjeta, ver facturas, cancelar).
+  // Stripe Billing Portal session (change card, view invoices, cancel).
   .get("/portal", requireAuth, requireRole("owner", "admin"), async (c) => {
     const authUser = c.get("user");
     const stripe = getStripeClient();
@@ -62,7 +62,7 @@ export const billingRoutes = new Hono<AppEnv>()
 
     if (!tenant.stripeCustomerId) {
       throw new HTTPException(400, {
-        message: "Este tenant todavia no tiene una suscripcion de Stripe activa",
+        message: "This tenant does not have an active Stripe subscription yet",
       });
     }
 

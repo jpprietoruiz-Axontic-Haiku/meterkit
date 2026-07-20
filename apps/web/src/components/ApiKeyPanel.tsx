@@ -23,7 +23,7 @@ export function ApiKeyPanel({
       const { apiKey } = await api.rotateApiKey(token);
       setNewKey(apiKey);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo rotar la API key.");
+      setError(err instanceof ApiError ? err.message : "Could not rotate the API key.");
     } finally {
       setLoading(false);
     }
@@ -31,26 +31,26 @@ export function ApiKeyPanel({
 
   return (
     <section className="panel">
-      <h2>API key de ingestion</h2>
+      <h2>Ingestion API key</h2>
       <p className="muted">
-        Se usa en el header <code>x-api-key</code> al llamar a <code>POST /v1/usage</code>.
+        Used in the <code>x-api-key</code> header when calling <code>POST /v1/usage</code>.
       </p>
       <p>
-        Clave actual:{" "}
+        Current key:{" "}
         <code>
-          {profile.tenant.apiKeyPrefix ? `${profile.tenant.apiKeyPrefix}…` : "sin generar"}
+          {profile.tenant.apiKeyPrefix ? `${profile.tenant.apiKeyPrefix}…` : "not generated"}
         </code>
       </p>
 
       {canRotate && (
         <button type="button" onClick={handleRotate} disabled={loading}>
-          {loading ? "Generando..." : "Rotar API key"}
+          {loading ? "Generating..." : "Rotate API key"}
         </button>
       )}
 
       {newKey && (
         <div className="secret-reveal">
-          <p>Guarda esta clave ahora — no se volvera a mostrar:</p>
+          <p>Save this key now — it will not be shown again:</p>
           <code>{newKey}</code>
         </div>
       )}

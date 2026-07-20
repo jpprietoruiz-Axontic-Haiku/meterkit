@@ -22,7 +22,7 @@ export function Dashboard() {
           </p>
         </div>
         <button type="button" className="secondary" onClick={logout}>
-          Cerrar sesion
+          Log out
         </button>
       </header>
 

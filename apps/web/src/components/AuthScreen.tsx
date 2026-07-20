@@ -22,7 +22,7 @@ export function AuthScreen() {
         await register(tenantName, email, password);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Algo fallo. Intentalo de nuevo.");
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -32,7 +32,9 @@ export function AuthScreen() {
     <div className="auth-screen">
       <div className="auth-card">
         <h1>MeterKit</h1>
-        <p className="auth-subtitle">Metering, cuotas y facturacion por uso — panel de tenant.</p>
+        <p className="auth-subtitle">
+          Metering, quotas, and usage-based billing — tenant dashboard.
+        </p>
 
         <div className="auth-tabs">
           <button
@@ -40,21 +42,21 @@ export function AuthScreen() {
             className={mode === "login" ? "active" : ""}
             onClick={() => setMode("login")}
           >
-            Iniciar sesion
+            Log in
           </button>
           <button
             type="button"
             className={mode === "register" ? "active" : ""}
             onClick={() => setMode("register")}
           >
-            Crear cuenta
+            Create account
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           {mode === "register" && (
             <label>
-              Nombre de la empresa
+              Company name
               <input
                 value={tenantName}
                 onChange={(e) => setTenantName(e.target.value)}
@@ -74,7 +76,7 @@ export function AuthScreen() {
             />
           </label>
           <label>
-            Contrasena
+            Password
             <input
               type="password"
               value={password}
@@ -87,7 +89,7 @@ export function AuthScreen() {
           {error && <p className="auth-error">{error}</p>}
 
           <button type="submit" className="primary" disabled={submitting}>
-            {submitting ? "Un momento..." : mode === "login" ? "Entrar" : "Crear cuenta"}
+            {submitting ? "One moment..." : mode === "login" ? "Log in" : "Create account"}
           </button>
         </form>
       </div>

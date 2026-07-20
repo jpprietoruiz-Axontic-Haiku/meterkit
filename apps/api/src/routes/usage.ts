@@ -32,7 +32,7 @@ const listUsageQuerySchema = z.object({
 const DEFAULT_RANGE_DAYS = 30;
 
 export const usageRoutes = new Hono<AppEnv>()
-  // Ingestion: protegida por API key de tenant, pensada para llamadas server-to-server.
+  // Ingestion: protected by tenant API key, meant for server-to-server calls.
   .post("/", requireApiKey, async (c) => {
     const body = recordUsageSchema.parse(await c.req.json());
     const tenantId = c.get("apiKeyTenantId");
@@ -41,8 +41,8 @@ export const usageRoutes = new Hono<AppEnv>()
     if (quotaCheck.blocked && quotaCheck.quota) {
       throw new HTTPException(429, {
         message:
-          `Cuota excedida para "${body.metric}": limite mensual ${quotaCheck.quota.limit}, ` +
-          `uso actual ${quotaCheck.currentTotal}. Esta llamada (${body.quantity}) lo superaria.`,
+          `Quota exceeded for "${body.metric}": monthly limit ${quotaCheck.quota.limit}, ` +
+          `current usage ${quotaCheck.currentTotal}. This call (${body.quantity}) would exceed it.`,
       });
     }
 
@@ -71,7 +71,7 @@ export const usageRoutes = new Hono<AppEnv>()
       201,
     );
   })
-  // Lectura: protegida por JWT, consumida por el dashboard.
+  // Read: protected by JWT, consumed by the dashboard.
   .get("/", requireAuth, async (c) => {
     const query = listUsageQuerySchema.parse({
       metric: c.req.query("metric"),
@@ -107,20 +107,20 @@ export const usageRoutes = new Hono<AppEnv>()
 
     return c.json({ range: { from, to }, aggregates: rows });
   })
-  // Dashboard en vivo. EventSource (API nativa del navegador) no puede enviar
-  // headers propios, asi que aqui aceptamos el JWT tambien por query param
-  // ?token=... ademas de Authorization: Bearer — unicamente en este endpoint.
+  // Live dashboard. EventSource (the browser's native API) cannot send custom
+  // headers, so here we also accept the JWT via the query param ?token=...
+  // in addition to Authorization: Bearer — only on this endpoint.
   .get("/stream", async (c) => {
     const headerToken = c.req.header("Authorization")?.replace(/^Bearer\s+/, "");
     const token = headerToken ?? c.req.query("token");
 
     if (!token) {
-      throw new HTTPException(401, { message: "Falta el token (header o ?token=)" });
+      throw new HTTPException(401, { message: "Missing token (header or ?token=)" });
     }
 
     const authUser = await verifyAuthToken(token).catch(() => null);
     if (!authUser) {
-      throw new HTTPException(401, { message: "Token invalido o expirado" });
+      throw new HTTPException(401, { message: "Invalid or expired token" });
     }
 
     return streamSSE(c, async (stream) => {

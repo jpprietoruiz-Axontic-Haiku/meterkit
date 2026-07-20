@@ -30,9 +30,9 @@ export function UsageHistoryChart({ token }: { token: string }) {
 
   return (
     <section className="panel">
-      <h2>Ultimos 14 dias</h2>
+      <h2>Last 14 days</h2>
       {grouped.size === 0 ? (
-        <p className="muted">Sin historico todavia.</p>
+        <p className="muted">No history yet.</p>
       ) : (
         Array.from(grouped.entries()).map(([metric, series]) => {
           const max = Math.max(...series.map((p) => Number(p.total)), 1);
@@ -45,7 +45,7 @@ export function UsageHistoryChart({ token }: { token: string }) {
                     key={p.period}
                     className="history-bar"
                     style={{ height: `${Math.max((Number(p.total) / max) * 100, 4)}%` }}
-                    title={`${p.period.slice(0, 10)}: ${Number(p.total).toLocaleString("es-ES")}`}
+                    title={`${p.period.slice(0, 10)}: ${Number(p.total).toLocaleString("en-US")}`}
                   />
                 ))}
               </div>

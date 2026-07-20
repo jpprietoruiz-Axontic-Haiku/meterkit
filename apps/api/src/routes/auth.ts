@@ -12,9 +12,9 @@ import { requireRole } from "../middleware/rbac";
 import type { AppEnv } from "../types";
 
 const registerSchema = z.object({
-  tenantName: z.string().trim().min(1, "tenantName es obligatorio").max(200),
+  tenantName: z.string().trim().min(1, "tenantName is required").max(200),
   email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres"),
+  password: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
 const loginSchema = z.object({
@@ -32,16 +32,16 @@ export const authRoutes = new Hono<AppEnv>()
 
     const existing = await db.query.users.findFirst({ where: eq(users.email, body.email) });
     if (existing) {
-      throw new HTTPException(409, { message: "Ya existe una cuenta con ese email" });
+      throw new HTTPException(409, { message: "An account with that email already exists" });
     }
 
     const passwordHash = await hashPassword(body.password);
 
-    // Un registro crea siempre un tenant nuevo con su primer usuario como owner:
-    // MeterKit no soporta (todavia) invitar usuarios a un tenant existente via self-serve.
+    // Registration always creates a brand-new tenant with its first user as owner:
+    // MeterKit does not (yet) support inviting users to an existing tenant via self-serve.
     const { tenant, user } = await db.transaction(async (tx) => {
       const [tenant] = await tx.insert(tenants).values({ name: body.tenantName }).returning();
-      if (!tenant) throw new Error("No se pudo crear el tenant");
+      if (!tenant) throw new Error("Failed to create the tenant");
 
       const [user] = await tx
         .insert(users)
@@ -52,7 +52,7 @@ export const authRoutes = new Hono<AppEnv>()
           role: "owner",
         })
         .returning();
-      if (!user) throw new Error("No se pudo crear el usuario");
+      if (!user) throw new Error("Failed to create the user");
 
       return { tenant, user };
     });
@@ -76,7 +76,7 @@ export const authRoutes = new Hono<AppEnv>()
     const validPassword = user ? await verifyPassword(body.password, user.passwordHash) : false;
 
     if (!user || !validPassword) {
-      throw new HTTPException(401, { message: "Email o contrasena incorrectos" });
+      throw new HTTPException(401, { message: "Incorrect email or password" });
     }
 
     const token = await signAuthToken({
@@ -93,7 +93,7 @@ export const authRoutes = new Hono<AppEnv>()
 
     const tenant = await db.query.tenants.findFirst({ where: eq(tenants.id, authUser.tenantId) });
     if (!tenant) {
-      throw new HTTPException(404, { message: "Tenant no encontrado" });
+      throw new HTTPException(404, { message: "Tenant not found" });
     }
 
     return c.json({
@@ -107,8 +107,8 @@ export const authRoutes = new Hono<AppEnv>()
       },
     });
   })
-  // Emite/rota la API key del tenant. Solo se devuelve el valor en claro en esta
-  // respuesta; a partir de aqui solo se persiste su hash (ver lib/api-key.ts).
+  // Issues/rotates the tenant's API key. The plaintext value is only ever returned in this
+  // response; from here on only its hash is persisted (see lib/api-key.ts).
   .post("/api-key", requireAuth, requireRole("owner", "admin"), async (c) => {
     const authUser = c.get("user");
     const generated = await generateApiKey();

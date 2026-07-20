@@ -9,7 +9,7 @@ function Shell() {
   if (loading) {
     return (
       <div className="auth-screen">
-        <p className="muted">Cargando…</p>
+        <p className="muted">Loading…</p>
       </div>
     );
   }

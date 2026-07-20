@@ -29,7 +29,7 @@ export function QuotasPanel({ token, canEdit }: { token: string; canEdit: boolea
       setLimit("");
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "No se pudo guardar la cuota.");
+      setError(err instanceof ApiError ? err.message : "Could not save the quota.");
     } finally {
       setSubmitting(false);
     }
@@ -37,16 +37,16 @@ export function QuotasPanel({ token, canEdit }: { token: string; canEdit: boolea
 
   return (
     <section className="panel">
-      <h2>Cuotas mensuales</h2>
+      <h2>Monthly quotas</h2>
 
       {quotas.length === 0 ? (
-        <p className="muted">Sin cuotas configuradas: el consumo no tiene limite.</p>
+        <p className="muted">No quotas configured: usage is unlimited.</p>
       ) : (
         <table className="table">
           <thead>
             <tr>
               <th>Metric</th>
-              <th>Limite / mes</th>
+              <th>Limit / month</th>
               <th>Enforcement</th>
             </tr>
           </thead>
@@ -54,7 +54,7 @@ export function QuotasPanel({ token, canEdit }: { token: string; canEdit: boolea
             {quotas.map((q) => (
               <tr key={q.id}>
                 <td>{q.metric}</td>
-                <td>{Number(q.limit).toLocaleString("es-ES")}</td>
+                <td>{Number(q.limit).toLocaleString("en-US")}</td>
                 <td>
                   <span className={`badge badge-${q.enforcement}`}>{q.enforcement}</span>
                 </td>
@@ -67,7 +67,7 @@ export function QuotasPanel({ token, canEdit }: { token: string; canEdit: boolea
       {canEdit && (
         <form onSubmit={handleSubmit} className="inline-form">
           <input
-            placeholder="metric (p. ej. api_calls)"
+            placeholder="metric (e.g. api_calls)"
             value={metric}
             onChange={(e) => setMetric(e.target.value)}
             required
@@ -75,7 +75,7 @@ export function QuotasPanel({ token, canEdit }: { token: string; canEdit: boolea
           <input
             type="number"
             min={1}
-            placeholder="limite"
+            placeholder="limit"
             value={limit}
             onChange={(e) => setLimit(e.target.value)}
             required
@@ -84,11 +84,11 @@ export function QuotasPanel({ token, canEdit }: { token: string; canEdit: boolea
             value={enforcement}
             onChange={(e) => setEnforcement(e.target.value as "soft" | "hard")}
           >
-            <option value="soft">soft (avisa)</option>
-            <option value="hard">hard (bloquea)</option>
+            <option value="soft">soft (warns)</option>
+            <option value="hard">hard (blocks)</option>
           </select>
           <button type="submit" disabled={submitting}>
-            Guardar
+            Save
           </button>
         </form>
       )}

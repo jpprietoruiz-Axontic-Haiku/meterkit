@@ -4,16 +4,16 @@ import { signAuthToken, verifyAuthToken } from "../../src/lib/jwt";
 import { hashPassword, verifyPassword } from "../../src/lib/password";
 
 describe("password hashing", () => {
-  it("verifica correctamente un hash propio y rechaza contrasenas incorrectas", async () => {
+  it("correctly verifies its own hash and rejects incorrect passwords", async () => {
     const hash = await hashPassword("correcthorsebattery");
 
     expect(await verifyPassword("correcthorsebattery", hash)).toBe(true);
-    expect(await verifyPassword("otra-cosa", hash)).toBe(false);
+    expect(await verifyPassword("something-else", hash)).toBe(false);
   });
 });
 
 describe("JWT", () => {
-  it("firma y verifica un token, preservando el payload", async () => {
+  it("signs and verifies a token, preserving the payload", async () => {
     const token = await signAuthToken({
       sub: "user-1",
       tenantId: "tenant-1",
@@ -31,7 +31,7 @@ describe("JWT", () => {
     });
   });
 
-  it("rechaza un token manipulado", async () => {
+  it("rejects a tampered token", async () => {
     const token = await signAuthToken({
       sub: "user-1",
       tenantId: "tenant-1",
@@ -44,7 +44,7 @@ describe("JWT", () => {
 });
 
 describe("API keys", () => {
-  it("genera claves unicas con hash reproducible y prefijo consistente", async () => {
+  it("generates unique keys with a reproducible hash and consistent prefix", async () => {
     const a = await generateApiKey();
     const b = await generateApiKey();
 
