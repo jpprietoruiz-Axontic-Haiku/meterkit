@@ -1,6 +1,6 @@
-import { afterAll, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { createApp } from "../src/app";
-import { closeDb, db } from "../src/db";
+import { db } from "../src/db";
 import { users } from "../src/db/schema";
 import { signAuthToken } from "../src/lib/jwt";
 import { resetDatabase } from "./helpers/db";
@@ -60,10 +60,9 @@ async function getUsageTotal(token: string, metric: string) {
   return body.aggregates.reduce((sum, row) => sum + Number(row.total), 0);
 }
 
+// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
+// por todos los archivos de test dentro del mismo proceso de `bun test`.
 beforeEach(resetDatabase);
-afterAll(async () => {
-  await closeDb();
-});
 
 describe("POST /quotas", () => {
   it("solo owner/admin puede configurar cuotas (member -> 403)", async () => {

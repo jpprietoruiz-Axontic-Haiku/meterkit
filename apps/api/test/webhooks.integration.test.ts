@@ -1,7 +1,7 @@
-import { afterAll, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
 import { createApp } from "../src/app";
-import { closeDb, db } from "../src/db";
+import { db } from "../src/db";
 import { tenants } from "../src/db/schema";
 import { env } from "../src/env";
 import { getStripeClient } from "../src/lib/stripe";
@@ -48,10 +48,9 @@ function signedWebhookRequest(eventId: string, type: string, dataObject: Record<
   });
 }
 
+// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
+// por todos los archivos de test dentro del mismo proceso de `bun test`.
 beforeEach(resetDatabase);
-afterAll(async () => {
-  await closeDb();
-});
 
 describe("POST /webhooks/stripe", () => {
   it("rechaza una firma invalida con 400", async () => {

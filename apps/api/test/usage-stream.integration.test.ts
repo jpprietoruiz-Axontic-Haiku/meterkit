@@ -1,6 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { createApp } from "../src/app";
-import { closeDb } from "../src/db";
 import { resetDatabase } from "./helpers/db";
 
 type AuthResponse = { token: string; tenant: { id: string; name: string } };
@@ -47,10 +46,9 @@ async function readFirstSseEvent(res: Response): Promise<unknown> {
   return JSON.parse(dataLine.slice("data:".length).trim());
 }
 
+// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
+// por todos los archivos de test dentro del mismo proceso de `bun test`.
 beforeEach(resetDatabase);
-afterAll(async () => {
-  await closeDb();
-});
 
 describe("GET /v1/usage/stream", () => {
   it("rechaza sin token (ni header ni query param) con 401", async () => {

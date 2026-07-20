@@ -1,6 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { createApp } from "../src/app";
-import { closeDb } from "../src/db";
 import { resetDatabase } from "./helpers/db";
 
 type AuthResponse = {
@@ -43,10 +42,9 @@ function postUsage(apiKey: string, body: Record<string, unknown>) {
   });
 }
 
+// Sin afterAll(closeDb): el cliente de Postgres es un singleton compartido
+// por todos los archivos de test dentro del mismo proceso de `bun test`.
 beforeEach(resetDatabase);
-afterAll(async () => {
-  await closeDb();
-});
 
 describe("POST /v1/usage", () => {
   it("rechaza requests sin API key con 401", async () => {

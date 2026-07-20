@@ -1,7 +1,7 @@
-import { afterAll, beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
 import { createApp } from "../src/app";
-import { closeDb, db } from "../src/db";
+import { db } from "../src/db";
 import { tenants, users } from "../src/db/schema";
 import { signAuthToken } from "../src/lib/jwt";
 import { resetDatabase } from "./helpers/db";
@@ -28,10 +28,12 @@ async function register(tenantName: string, email: string, password = "correctho
   return { res, body: (await res.json()) as AuthResponse };
 }
 
+// No afterAll(closeDb) aqui: el cliente de Postgres (src/db) es un singleton
+// compartido por todo el proceso de `bun test`, que corre todos los archivos
+// de test en el mismo proceso. Cerrarlo al final de un archivo rompe la
+// conexion para los siguientes. El proceso de test termina y libera el
+// socket solo; no hace falta cerrarlo a mano.
 beforeEach(resetDatabase);
-afterAll(async () => {
-  await closeDb();
-});
 
 describe("POST /auth/register", () => {
   it("crea un tenant nuevo con su usuario owner y devuelve un JWT", async () => {
