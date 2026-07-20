@@ -1,9 +1,11 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { db } from "../db";
 import { usageAggregates } from "../db/schema";
 import { startOfUtcDay } from "../lib/period";
+import { checkQuota } from "../lib/quotas";
 import { recordUsageEvent } from "../lib/usage";
 import { requireApiKey } from "../middleware/api-key";
 import { requireAuth } from "../middleware/auth";
@@ -30,6 +32,15 @@ export const usageRoutes = new Hono<AppEnv>()
     const body = recordUsageSchema.parse(await c.req.json());
     const tenantId = c.get("apiKeyTenantId");
 
+    const quotaCheck = await checkQuota(tenantId, body.metric, body.quantity);
+    if (quotaCheck.blocked && quotaCheck.quota) {
+      throw new HTTPException(429, {
+        message:
+          `Cuota excedida para "${body.metric}": limite mensual ${quotaCheck.quota.limit}, ` +
+          `uso actual ${quotaCheck.currentTotal}. Esta llamada (${body.quantity}) lo superaria.`,
+      });
+    }
+
     const { event, aggregate } = await recordUsageEvent({ tenantId, ...body });
 
     return c.json(
@@ -42,6 +53,15 @@ export const usageRoutes = new Hono<AppEnv>()
           createdAt: event.createdAt,
         },
         aggregate: { period: aggregate.period, metric: aggregate.metric, total: aggregate.total },
+        ...(quotaCheck.warning && !quotaCheck.blocked && quotaCheck.quota
+          ? {
+              quotaWarning: {
+                metric: body.metric,
+                limit: quotaCheck.quota.limit,
+                currentTotal: quotaCheck.projectedTotal,
+              },
+            }
+          : {}),
       },
       201,
     );
