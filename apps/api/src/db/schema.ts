@@ -13,6 +13,9 @@ import {
 export const userRoleEnum = pgEnum("user_role", ["owner", "admin", "member"]);
 export const quotaEnforcementEnum = pgEnum("quota_enforcement", ["soft", "hard"]);
 
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
+export type QuotaEnforcement = (typeof quotaEnforcementEnum.enumValues)[number];
+
 // Un tenant = una cuenta cliente. api_key_hash es el secreto para POST /v1/usage;
 // nunca se guarda en claro (ver hito 2).
 export const tenants = pgTable("tenants", {
