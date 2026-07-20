@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  index,
   jsonb,
   numeric,
   pgEnum,
@@ -58,7 +59,10 @@ export const usageEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("usage_events_tenant_metric_created_idx").on(
+    // Indice normal (NO unico): es habitual que dos eventos del mismo
+    // tenant/metric caigan en el mismo timestamp bajo escritura concurrente.
+    // Solo acelera el rango de fechas por tenant+metric, no restringe nada.
+    index("usage_events_tenant_metric_created_idx").on(
       table.tenantId,
       table.metric,
       table.createdAt,
