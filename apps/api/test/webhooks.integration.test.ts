@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
+import Stripe from "stripe";
 import { createApp } from "../src/app";
 import { db } from "../src/db";
 import { tenants } from "../src/db/schema";
@@ -39,6 +40,10 @@ function signedWebhookRequest(eventId: string, type: string, dataObject: Record<
     payload,
     // biome-ignore lint/style/noNonNullAssertion: seteado explicitamente para estos tests
     secret: env.STRIPE_WEBHOOK_SECRET!,
+    // generateTestHeaderString es sincrono y el provider por defecto en Bun
+    // (SubtleCrypto) no soporta sincronia; forzamos el provider de Node solo
+    // para este helper de test.
+    cryptoProvider: Stripe.createNodeCryptoProvider(),
   });
 
   return app.request("/webhooks/stripe", {

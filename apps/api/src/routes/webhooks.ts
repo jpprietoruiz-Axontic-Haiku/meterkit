@@ -70,7 +70,15 @@ export const webhookRoutes = new Hono<AppEnv>().post("/stripe", async (c) => {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
+    // constructEventAsync (no constructEvent): en Bun, el SDK de Stripe usa un
+    // crypto provider basado en SubtleCrypto (siempre asincrono) en vez del de
+    // Node — la variante sincrona lanza "cannot be used in a synchronous
+    // context" en este runtime.
+    event = await stripe.webhooks.constructEventAsync(
+      rawBody,
+      signature,
+      env.STRIPE_WEBHOOK_SECRET,
+    );
   } catch {
     throw new HTTPException(400, { message: "Firma de webhook invalida" });
   }
