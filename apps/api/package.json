@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "push-usage": "bun run src/jobs/push-usage-to-stripe.ts"
   },
   "dependencies": {
     "hono": "^4.6.14",

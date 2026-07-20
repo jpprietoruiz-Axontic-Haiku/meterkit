@@ -79,6 +79,12 @@ export const usageAggregates = pgTable(
     period: timestamp("period", { withTimezone: true }).notNull(),
     metric: text("metric").notNull(),
     total: numeric("total", { precision: 20, scale: 6 }).notNull().default("0"),
+    // Cuanto de `total` ya se reporto a Stripe como usage record. El job de push
+    // (hito 5) reporta solo el delta (total - stripePushedTotal) y luego lo iguala,
+    // evitando reportar dos veces el mismo consumo.
+    stripePushedTotal: numeric("stripe_pushed_total", { precision: 20, scale: 6 })
+      .notNull()
+      .default("0"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

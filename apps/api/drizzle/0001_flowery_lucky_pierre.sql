@@ -1,0 +1,1 @@
+ALTER TABLE "usage_aggregates" ADD COLUMN "stripe_pushed_total" numeric(20, 6) DEFAULT '0' NOT NULL;

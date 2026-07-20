@@ -3,8 +3,10 @@ import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { ZodError } from "zod";
 import { authRoutes } from "./routes/auth";
+import { billingRoutes } from "./routes/billing";
 import { quotaRoutes } from "./routes/quotas";
 import { usageRoutes } from "./routes/usage";
+import { webhookRoutes } from "./routes/webhooks";
 import type { AppEnv } from "./types";
 
 export function createApp() {
@@ -28,6 +30,8 @@ export function createApp() {
   app.route("/auth", authRoutes);
   app.route("/v1/usage", usageRoutes);
   app.route("/quotas", quotaRoutes);
+  app.route("/billing", billingRoutes);
+  app.route("/webhooks", webhookRoutes);
 
   return app;
 }
