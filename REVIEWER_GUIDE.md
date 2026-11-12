@@ -23,6 +23,6 @@
 
 ## Scope and limitations
 
-This is a **reference implementation**. It is not ChurnRescue, does not recover failed subscription payments and does not prove production traffic or paying users. Stripe configuration and usage reporting require integration setup. Verify the latest [CI runs](../../actions/workflows/ci.yml) and follow the [README](README.md) to run the project locally.
+This is a **reference implementation**. It is not ChurnRescue, does not recover failed subscription payments and does not prove production traffic or paying users. Stripe configuration and usage reporting require integration setup. Verify the latest [CI runs](https://github.com/jpprietoruiz-Axontic-Haiku/meterkit/actions/workflows/ci.yml) and follow the [README](README.md) to run the project locally.
 
 **Author:** Juan Pablo Prieto, PhD · [GitHub profile](https://github.com/jpprietoruiz-Axontic-Haiku)
