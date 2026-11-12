@@ -1,5 +1,7 @@
 # MeterKit
 
+> **Hiring manager / technical reviewer?** Start with the [2-minute technical overview](REVIEWER_GUIDE.md) for architecture, verification points and limitations.
+
 Production-grade, multi-tenant SaaS starter that **meters consumption per tenant** (API
 calls, LLM tokens, or any custom metric), **enforces quotas**, and **bills for usage** via
 Stripe metered billing, with a real-time cost dashboard.
